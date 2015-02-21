@@ -7,60 +7,74 @@
 		throw "No getUserMedia or AudioContext available in your browser";
 	}
 
+	var frequencies = {
+		'E1': 41.204,
+		'A1': 55.000,
+		'D2': 73.416,
+		'G2': 97.999
+	};
+	var strings = ['E1', 'A1', 'D2', 'G2'];
+
+	var lights = {
+		low: document.getElementById('low-freq-light'),
+		string: document.getElementById('string-freq-light'),
+		high: document.getElementById('high-freq-light')
+	};
+
+	function setFrequency(detector, key) {
+		detector.setFrequencies({
+			'low': frequencies[key] - 2,
+			'string': frequencies[key],
+			'high': frequencies[key] + 2
+		});
+		lights.string.innerHTML = key;
+	}
+
 	navigator.getUserMedia({ video: false, audio: true },
 		function success(localMediaStream) {
 			var audioContext = new AudioContext();
 			var mediaStreamSource = audioContext.createMediaStreamSource( localMediaStream );
-			var analyzer = audioContext.createAnalyser();
-			var pitchDetector = audioContext.createPitchDetector( [55] );
+			var gain = audioContext.createGain();
+			var pitchDetector = audioContext.createPitchDetector();
+			var analyser = audioContext.createAnalyser();
+			var cutoffCorrelation = 30;
+			var string = 'E1';
 
-			var canvas = document.getElementById('tuner-screen');
-			var canvasContext = canvas.getContext('2d');
+			analyser.fftSize = 2048;
+			gain.gain.value = 5;
+
+			mediaStreamSource.connect(gain);
+			gain.connect(pitchDetector);
+			pitchDetector.connect(analyser);
+
+			setFrequency(pitchDetector, string);
+			document.getElementById('lower-freq-btn').onclick = function() {
+				if (strings.indexOf(string)-1 > -1) {
+					string = strings[strings.indexOf(string)-1];
+					setFrequency(pitchDetector, string);
+					gain.gain.value = (string.length - strings.indexOf(string)) + 1;
+				}
+			};
+			document.getElementById('higher-freq-btn').onclick = function() {
+				if (strings.indexOf(string)+1 < strings.length) {
+					string = strings[strings.indexOf(string)+1];
+					setFrequency(pitchDetector, string);
+					gain.gain.value = (strings.length - strings.indexOf(string)) + 1;
+				}
+			};
 			
-			analyzer.fftSize =  2048;
-			var bufferLength = analyzer.frequencyBinCount;
-			var dataArray = new Uint8Array(bufferLength);
-			var sampleRate = audioContext.sampleRate;
-			var frequencyStep = sampleRate / (2 * bufferLength);
+			(function updateScreen() {
+				var correlations = pitchDetector.getCorrelations();
 
-			mediaStreamSource.connect(pitchDetector);
-			pitchDetector.connect(analyzer);
-			//analyzer.connect(audioContext.destination);
+				for (var key in correlations) {
+					var correlation = (correlations[key] < cutoffCorrelation) ? correlations[key] : cutoffCorrelation;
+					r = 255 - Math.round(correlation / cutoffCorrelation * 255);
 
-			function draw() {
-
-				drawVisual = requestAnimationFrame(draw);
-
-				analyzer.getByteFrequencyData(dataArray);
-
-				canvasContext.fillStyle = 'rgb(200, 200, 200)';
-				canvasContext.fillRect(0, 0, 400, 200);
-
-				canvasContext.lineWidth = 1;
-				canvasContext.strokeStyle = 'rgb(0, 0, 0)';
-
-				canvasContext.beginPath();
-
-				var sliceWidth = 400.0 / bufferLength;
-				var x = 0;
-
-				for (var i = 0; i < bufferLength; i++) {
-					var v = dataArray[i] / 128.0;
-					var y = 200 - v * 100;
-					if (i === 0) {
-						canvasContext.moveTo(x,y);
-					} else {
-						canvasContext.lineTo(x,y);
-					}
-					x += sliceWidth;
+					lights[key].style.backgroundColor = 'rgb('+r+',240,0)';
 				}
 
-				canvasContext.lineTo(canvas.width, canvas.height/2);
-				canvasContext.stroke();
-
-			}
-
-			draw();
+				setTimeout(updateScreen, 100);
+			})();
 
 		},
 		function fail(e) {

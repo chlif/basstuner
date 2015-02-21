@@ -6,3 +6,50 @@ body {
 a {
   color: #00B7FF;
 }
+
+#tuner { clear: both; }
+	#tuner div {
+		float: left;
+		clear: none;
+		margin: 0 10px;
+	}
+	#tuner div.tuner-light {
+		width: 60px;
+		height: 60px;
+		border: 1px solid #000;
+		-webkit-border-radius: 50px;
+		-moz-border-radius: 50px;
+		border-radius: 50px;
+		background: #999;
+		
+		line-height: 60px;
+		text-align: center;
+		vertical-align: middle;
+
+		font-weight: bold;
+		font-size: 20px;
+	}
+	#tuner div.tuner-light.small {
+		margin-top: 10px;
+		width: 40px;
+		height: 40px;
+		-webkit-border-radius: 30px;
+		-moz-border-radius: 30px;
+		border-radius: 30px;
+	}
+	#tuner div.tuner-btn {
+		margin-top: 15px;
+		width: 30px;
+		height: 35px;
+		background: url('../images/tuner-prev-string.png') no-repeat left top;
+		cursor: pointer;
+	}
+	#tuner div.tuner-btn.higher {
+		background: url('../images/tuner-next-string.png') no-repeat left top;	
+	}
+
+	#tuner div.clearfix {
+		content: "";
+		display: table;
+		clear: both;
+	}

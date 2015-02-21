@@ -14,7 +14,13 @@
 	/**
 	 * Values
 	 */
-	var sampleRate; // This holds universally on a single computer.
+	var sampleRate; // This holds universally on a single computer
+	var processorBufferSize = 4096;
+	var buffer = [];
+	var maxBufferTime = 250; // in ms
+	var maxBufferLength;
+	var correlations = {};
+	var frequencies = {};
 
 	/**
 	 *	Helper functions
@@ -45,23 +51,33 @@
 		return _hypotenuse(real, imag);
 	}
 
-	// The actual magic behind it all
-	function _countCorrelationsForFrequencies(inputBuffer, frequencies) {
+	/**
+	 * Periodic update of correlations
+	 */
+	function _updateCorrelations(input) {
+		for (var key in frequencies) {	
+			var f = frequencies[key];
+			correlations[key] = _correlation( f, input );
+		}
+	}
+
+	// Gather buffer and run actual update periodically
+	function _countCorrelationsForFrequencies(inputBuffer) {
 		var input = inputBuffer.getChannelData(0);
-		
-		for (var i in frequencies) {
-			var f = frequencies[i];
-			console.log( _correlation( f, input ) );
-		}	
+		buffer = buffer.concat( Array.prototype.slice.call( input ) );
+		if (buffer.length > maxBufferLength) {
+			_updateCorrelations(buffer.slice());
+			buffer = [];	
+		}
 	}
 
 	/**
 	 *	Pitch detector node
 	 */
-	function PitchDetectorNode(audioContext, frequencies) {
+	function PitchDetectorNode(audioContext) {
 		this.onaudioprocess = function(event) {
 			_passInputToOutput(event.inputBuffer, event.outputBuffer);
-			_countCorrelationsForFrequencies(event.inputBuffer, frequencies);
+			_countCorrelationsForFrequencies(event.inputBuffer);
 		};
 	}
 
@@ -70,16 +86,26 @@
 	 */
 
 	// We need the factor to make the node look like a native library
-	function PitchDetectorNodeFactory(audioContext, frequencies) {
-		var scriptProcess = audioContext.createScriptProcessor(4096, 1, 1);
+	function PitchDetectorNodeFactory(audioContext) {
+		var script = audioContext.createScriptProcessor(processorBufferSize, 1, 1);
+		
 		sampleRate = audioContext.sampleRate;
-		PitchDetectorNode.call(scriptProcess, audioContext, frequencies);
-		return scriptProcess;
+		maxBufferLength = maxBufferTime * processorBufferSize / (sampleRate / 1000);
+		PitchDetectorNode.call(script, audioContext);
+
+		script.setFrequencies = function(freqs) {
+			frequencies = freqs;
+		};
+		script.getCorrelations = function() {
+			return correlations;
+		};
+
+		return script;
 	}
 
 	// Publish the node to API
-	AudioContext.prototype.createPitchDetector = function(frequencies) {
-		return PitchDetectorNodeFactory(this, frequencies);
+	AudioContext.prototype.createPitchDetector = function() {
+		return PitchDetectorNodeFactory(this);
 	};
 
 })();

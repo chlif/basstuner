@@ -3,4 +3,13 @@ extends layout
 block content
   h1= title
 
-  canvas(id='tuner-screen', width='400', height='200')
+
+  div
+    div(id='tuner')
+      div(id='low-freq-light', class='tuner-light small')
+      div(id='lower-freq-btn', class='tuner-btn lower')
+      div(id='string-freq-light', class='tuner-light')
+      div(id='higher-freq-btn', class='tuner-btn higher')
+      div(id='high-freq-light', class='tuner-light small')
+    div(class='clearfix')
+      &nbsp;
