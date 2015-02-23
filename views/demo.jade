@@ -1,0 +1,21 @@
+extends layout
+
+block content
+  h1= title
+
+  pre.
+    (function() {
+      var audioContext  = new AudioContext();
+      var oscillator = audioContext.createOscillator();
+
+      oscillator.type = oscillator.SINE;
+      oscillator.frequency.value = 440;
+
+      oscillator.connect( audioContext.destination );
+
+      oscillator.start();
+      oscillator.stop(2);
+    })();
+
+  script(src='/javascripts/demo.js')
+
